@@ -596,73 +596,71 @@ class CiviCRM_For_WordPress_Shortcodes {
       'force' => $force,
     );
 
-    switch ( $component ) {
+    $components = array();
 
-      case 'contribution':
+    $components['contribution'] = function($atts, &$args) {
+      if ( $atts['mode'] == 'preview' || $atts['mode'] == 'test' ) {
+        $args['action'] = 'preview';
+      }
+      $args['q'] = 'civicrm/contribute/transact';
+    };
 
-        if ( $mode == 'preview' || $mode == 'test' ) {
-          $args['action'] = 'preview';
-        }
-        $args['q'] = 'civicrm/contribute/transact';
-        break;
-
-      case 'event':
-
-        switch ( $action ) {
-          case 'register':
+    $components['event'] = function($atts, &$args) {
+      switch ( $atts['action'] ) {
+        case 'register':
             $args['q'] = 'civicrm/event/register';
-            if ( $mode == 'preview' || $mode == 'test' ) {
-              $args['action'] = 'preview';
+            if ( $atts['mode'] == 'preview' || $atts['mode'] == 'test' ) {
+                $args['action'] = 'preview';
             }
             break;
 
-          case 'info':
+        case 'info':
             $args['q'] = 'civicrm/event/info';
             $_REQUEST['page'] = $_GET['page'] = 'CiviCRM';
             break;
 
-          default:
+        default:
             echo '<p>' . __( 'Do not know how to handle this shortcode', 'civicrm' ) . '</p>';
             return;
-        }
-        break;
+      }
+    };
 
-      case 'user-dashboard':
+    $components['user-dashboard'] = function($atts, &$args) {
+      $args['q'] = 'civicrm/user';
+      unset( $args['id'] );
+    };
 
-        $args['q'] = 'civicrm/user';
-        unset( $args['id'] );
-        break;
+    $components['profile'] = function($atts, &$args) {
+      if ($atts['mode'] == 'edit') {
+        $args['q'] = 'civicrm/profile/edit';
+      }
+      elseif ($atts['mode'] == 'view') {
+        $args['q'] = 'civicrm/profile/view';
+      }
+      elseif ($atts['mode'] == 'search') {
+        $args['q'] = 'civicrm/profile';
+      }
+      else {
+        $args['q'] = 'civicrm/profile/create';
+      }
+      $args['gid'] = $atts['gid'];
+    };
 
-      case 'profile':
+    $components['petition'] = function($atts, &$args) {
+      $args['q'] = 'civicrm/petition/sign';
+      $args['sid'] = $args['id'];
+      unset($args['id']);
+    };
 
-        if ($mode == 'edit') {
-          $args['q'] = 'civicrm/profile/edit';
-        }
-        elseif ($mode == 'view') {
-          $args['q'] = 'civicrm/profile/view';
-        }
-        elseif ($mode == 'search') {
-          $args['q'] = 'civicrm/profile';
-        }
-        else {
-          $args['q'] = 'civicrm/profile/create';
-        }
-        $args['gid'] = $gid;
-        break;
-
-
-      case 'petition':
-
-        $args['q'] = 'civicrm/petition/sign';
-        $args['sid'] = $args['id'];
-        unset($args['id']);
-        break;
-
-      default:
-
-        echo '<p>' . __( 'Do not know how to handle this shortcode', 'civicrm' ) . '</p>';
-        return;
-
+    $components = array_merge($components, apply_filters('civicrm_shortcode_components', array()));
+    if (!empty($components[$component])) {
+      if (is_callable($components[$component])) {
+        $components[$component]($shortcode_atts, $args);
+      }
+    }
+    else {
+      echo '<p>' . __( 'Do not know how to handle this shortcode', 'civicrm' ) . '</p>';
+      return;
     }
 
     /**
